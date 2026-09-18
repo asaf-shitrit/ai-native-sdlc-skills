@@ -1,76 +1,80 @@
 ---
 name: sdlc-plan
-description: Work from a written, interrogated, committed plan.md before any code is generated — files that change, order of work, risks, and the proof that it worked. Use before implementing anything non-trivial, when starting in plan mode, when asked "how would you do this", when a change touches more than one file or has a blast radius, and when deciding whether a session can safely run on auto-accept. Covers the plan template, the questions that make a plan worth having, keeping the diff and the plan in sync, and when auto mode is appropriate.
+description: Write, interrogate and commit a plan before any code is generated — which files change, in what order, what could break, and what will prove it worked. Use before implementing anything non-trivial, when starting in plan mode, when asked "how would you approach this", when a change spans several files or carries blast radius, and when judging whether a session can safely run unattended. Covers the bar a plan has to clear, the questions that make one worth having, keeping plan and diff honest with each other, and when auto-accept is earned.
 ---
 
-# Plan before building
+# Plan first
 
-Third artifact in the chain (see `ai-native-sdlc`). Traditionally, how a change would be made lived in the engineer's head; the first thing a reviewer saw was the finished diff, and by then rework was expensive. Plan mode moves design review to when changing course is still a matter of editing a document.
+Third file in the chain (`ai-native-sdlc`). Left implicit, the approach lives in one person's head and the first reviewable thing is a finished diff — by which point changing direction means throwing work away. A plan moves that decision to when it's still a document edit.
 
-## Prerequisites
+## The bar
 
-`intent.md` and/or `spec.md` if they exist; `CLAUDE.md` helps a lot (`sdlc-claude-md`).
+**Someone who never saw the conversation could implement the change from the plan alone.** Iterate until that's true. Most plans fail it on the first pass, usually by naming *what* without naming *where*.
 
-## The pass
+Plan mode is what makes this real rather than aspirational: the codebase can be read but not edited, so the constraint is enforced by the tool and not by discipline.
 
-1. **Start in plan mode.** The agent reads the codebase and cannot edit it. That restriction is the control — it is enforced by the harness, not by good intentions.
-2. **Ask for a plan that names**: the files that change, the order of the work, and the tests that prove it. Hand it `intent.md` and `spec.md`.
-3. **Interrogate the plan.** This is where the value is, and it is the step people skip:
-   - What could this change break?
-   - Which step is the riskiest?
-   - What did you consider and reject, and why?
-   - What do you not know yet?
-4. **Iterate until an engineer who never saw the conversation could implement the change from the plan alone.** That is the bar.
-5. **Commit the approved plan as `plan.md`.** It joins the audit trail, and PR review (`sdlc-pr-review`) checks the eventual diff against it.
-6. **Accept and implement.** With a solid plan, implementation is often a single pass.
-7. **When implementation departs from the plan, update `plan.md` in the same commit.** A hook can enforce that the two stay in sync (`sdlc-hooks`).
-
-## Template
+## What a plan names
 
 ```markdown
-# Plan: claims status self-service (from intent.md 2026-06-02)
+# Plan: drafts survive a refresh
 
-## Files that change
-portal/src/claims/StatusPanel.tsx (new), claims-api/routes/status.py,
-claims-api/tests/test_status.py
+## Changing
+web/src/editor/useDraftPersistence.ts   new
+web/src/editor/Editor.tsx               mount the hook, restore on load
+web/src/editor/__tests__/persistence.test.ts   new
 
-## Order of work
-1. Add the status endpoint behind existing auth.
-2. Panel against the endpoint.
-3. Wire into the portal nav.
+## Order
+1. Hook: write to IndexedDB on a debounce, read on mount.
+2. Restore path in Editor, behind a prompt.
+3. Clear persisted copy on successful publish.
 
-## Risks
-The claims-core API rate-limits at 50 rps; the panel must cache.
+## Risk
+Debounce interacts with the existing autosave-to-server timer;
+two writers to the same draft state. Step 1 has to make the
+precedence explicit or drafts will flap between versions.
 
 ## Proof
-test_status.py covers the four claim states; screenshot matches the
-approved mock.
+persistence.test.ts covers restore-after-reload, publish-then-reload
+(nothing restored), and the two-writer race. Manual: type, kill the
+tab, reopen.
 ```
 
-**Proof** is not optional. A plan without a stated, checkable proof condition cannot close its own loop (`sdlc-feedback-loop`), which means a human has to check everything by hand.
+Four headings, and **Proof is not optional**. A plan without a checkable proof condition can't close its own loop (`sdlc-feedback-loop`), which puts a human back in the position of verifying everything by hand.
 
-## Auto mode
+## Interrogate it
 
-Once the plan is approved, the agent can apply each change without a per-edit prompt. Auto-accept is the right default for routine work when **all** of these hold:
+A plan accepted on first read wasn't worth writing. Ask:
 
-- A tight spec and an approved plan
-- Small blast radius
-- Code the tests already cover
-- Guardrails are in place: a tuned `CLAUDE.md`, skills encoding policy, hooks blocking unsafe actions, and a test suite the agent can run
+- What does this break? Name something specific.
+- Which step is riskiest, and why that one?
+- What did you consider and reject?
+- What don't you know yet?
 
-The shift auto mode buys is from *watching the agent edit* to *reviewing artifacts after longer autonomous sessions*. It is also what makes parallelism worthwhile (`sdlc-parallel-work`) and is a precondition for running the loop autonomously (`sdlc-close-loop`).
+The last question is the productive one. An honest "I don't know how X behaves under Y" is worth more than a confident plan built on a guess, and it's cheap to resolve now.
 
-If the guardrails are not in place, auto mode just means finding out later.
+## Keeping it honest
 
-## Governance
+Commit the approved plan. Review later checks the diff against it (`sdlc-pr-review`), which only works if the plan still describes reality.
 
-Plan mode enforces design-before-code by construction: no file can be edited until the plan is accepted. The plan and its revisions are logged along with who accepted it. Routine changes are approved by the engineer; higher-risk classes go to a tech lead or architect.
+So: **when implementation departs from the plan, the plan changes in the same commit.** Drift is normal and fine — silent drift is what makes the artifact worthless. A hook can enforce the pairing (`sdlc-hooks`).
 
-## Measuring it
+## Earning auto-accept
 
-- **Leading** — share of changes that merge from the first implementation pass; time from plan approval to merged PR.
-- **Lagging** — rework cycles per change (PR metadata), and how often the merged diff still matches the committed `plan.md`.
+Once a plan is approved, the agent can work through it without pausing per edit. That's appropriate when *all* of these hold:
+
+- the plan is specific and the spec behind it is tight
+- blast radius is small
+- existing tests already cover the affected code
+- the guardrails exist — a real `CLAUDE.md`, policy encoded where it matters, hooks on anything unrecoverable, a suite the agent can run itself
+
+What it buys is the shift from watching edits scroll past to reviewing finished work, which is also what makes several sessions at once viable (`sdlc-parallel-work`).
+
+Without the guardrails, auto-accept just means finding out later, in a bigger diff.
+
+## Worth watching
+
+The share of changes that merge without a second implementation pass. Later: how often the merged diff still matches the plan it claims to implement.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

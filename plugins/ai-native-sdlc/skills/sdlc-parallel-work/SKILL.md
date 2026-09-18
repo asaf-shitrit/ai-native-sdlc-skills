@@ -1,70 +1,81 @@
 ---
 name: sdlc-parallel-work
-description: Run several streams of work at once with git worktrees, and factor recurring jobs into subagents with their own context and tool limits. Use when there is more work in flight than one session can carry, when asked to parallelize or run tasks concurrently, when a job recurs across tasks (verifying the app runs, simplifying after implementation, exploring the codebase without flooding context), when defining .claude/agents, or when deciding how many sessions one person can actually supervise. Covers splitting work so sessions do not collide, the subagent definition, and the real ceiling on parallelism.
+description: Run several streams of work at once using isolated worktrees, and factor recurring jobs into subagents with their own context and tool limits. Use when there is more work in flight than one session can hold, when asked to parallelize or run tasks concurrently, when the same job recurs across tasks (verifying the app runs, simplifying after implementation, exploring a codebase without flooding context), when writing subagent definitions, or when deciding how many sessions one person can genuinely supervise. Covers splitting work so sessions do not collide, what makes a good subagent, and the real ceiling.
 ---
 
-# Parallel sessions and subagents
+# Several streams at once
 
-One person can drive several streams of work at once. The job shifts from writing to **steering and reviewing** — and eventually to building and monitoring loops (`sdlc-close-loop`).
+## Two different tools
 
-## Two different things
+**A session** is a full instance working one task in its own checkout. Sessions share nothing and know nothing about each other — the person steering them is the only connection.
 
-- **A parallel session** is another full Claude Code instance, on a separate task, in its own git worktree. Sessions know nothing about each other; the person steering them is the only thing they share.
-- **A subagent** runs *inside* one session as a scoped helper with its own context window and tool limits.
+**A subagent** runs inside a session as a scoped helper with its own context window and its own tool access.
 
-Parallel sessions raise the number of tasks in flight. Subagents keep each session focused on its own task. They compose; they do not substitute for each other.
+Sessions increase how much is in flight. Subagents keep one session from drowning in its own context. They compose; neither substitutes for the other.
 
-## Prerequisites
+## What has to be true first
 
-- **`CLAUDE.md`** (`sdlc-claude-md`) — every session reads it, so it is what keeps parallel work consistent
-- **A feedback loop** (`sdlc-feedback-loop`) — the real enabler. A session that can verify its own work needs far less supervision, which is the only reason several can run at once
-- **Permission settings tuned** so sessions are not sitting on approval prompts for commands the team considers safe
+**A real `CLAUDE.md`** (`sdlc-claude-md`), because it's the only thing keeping independent sessions consistent with each other.
+
+**A working feedback loop** (`sdlc-feedback-loop`) — this is the actual prerequisite. A session that verifies itself needs supervision at the end; one that can't needs supervision throughout, and you cannot supervise three of those at once. Everything here depends on that.
+
+**Permissions tuned** so sessions aren't parked on prompts for commands you consider routine. Three blocked sessions are worse than one unblocked one.
 
 ## Splitting the work
 
-1. **Split into tasks that touch different files.** Use the plan (`sdlc-plan`) to see where the work is genuinely independent.
-2. **Tasks that share files run in a single session, one after another.** Do not fight merge conflicts you chose to create.
-3. **Each parallel task gets its own worktree** — a separate checkout on its own branch, so sessions cannot collide on files:
-   ```
-   claude --worktree feature-auth       # one terminal
-   claude --worktree fix-rate-limit     # another
-   ```
-4. **Start with two or three.** The practical ceiling is not machine capacity — it is **how many streams one person can review properly**. Add sessions only while review is keeping up. Past that point you are manufacturing unreviewed diffs.
+Split along **files**, not features. Use the plan (`sdlc-plan`) to see where the work is genuinely independent. Tasks that touch the same files go in one session, sequentially — parallelizing them just manufactures merge conflicts you then resolve by hand.
+
+Give each task its own worktree, so sessions can't collide:
+
+```bash
+git worktree add ../app-draft-persistence -b draft-persistence
+git worktree add ../app-webhook-retry     -b webhook-retry
+# then start a session in each
+```
+
+**Start with two.** The ceiling is not your machine — it's **how many streams one person can review properly**. Add a third only once review is comfortably keeping up. Past that point the output is unreviewed diffs, which is negative value: someone still has to read them, later, with less context, under more pressure.
 
 ## Subagents
 
-Turn repeated jobs into subagents: markdown files in `.claude/agents/`, each with a name, a description of when to use it, and the tools it may touch. Check them into git so the team shares them.
+A job earns a subagent when it recurs across tasks and benefits from a clean context. The three that consistently pay:
 
-Ones that consistently earn their place:
+- **A verifier** — runs the thing and checks behavior, in a fresh context, so its verdict isn't shaped by the reasoning that produced the code
+- **A simplifier** — removes accidental complexity once the work is correct
+- **An explorer** — answers a question about the codebase and reports back, without pulling the whole search into the main context
 
-- **A verifier** — runs the app and checks behavior in a fresh context, so the verdict is not colored by the assumptions that produced the code
-- **A simplifier** — strips needless complexity after the main agent finishes
-- **A researcher** — explores the codebase and reports back without flooding the main context
+Definitions live in `.claude/agents/`, committed:
 
 ```markdown
 ---
 name: verifier
-description: Runs the app and checks the change works before the session
-  reports done
-tools: Bash, Read
+description: Independently confirms a finished change behaves correctly.
+  Use when a session believes its work is complete.
+tools: Bash, Read, Grep
 ---
 
-Start the app with make run. Exercise the changed behavior and the two
-nearest neighboring flows. Report what you ran, what you saw, and any
-behavior that does not match plan.md. Do not fix anything; report only.
+Read plan.md for what this change was supposed to do.
+
+Start the app (`bun run dev`). Exercise the changed behavior, then the
+two flows nearest it that were working before — regressions show up
+next door more often than in the change itself.
+
+Report: what you ran, what you observed, and anything that does not
+match plan.md. Include the exact commands.
+
+Do not fix anything. Do not edit files. If something is broken, say
+what and stop.
 ```
 
-The last line matters: **report only**. A verifier that fixes what it finds has just become the author, and the independent check is gone.
+**"Do not fix anything" is load-bearing.** A verifier that repairs what it finds has become the author, and the independent check you built is gone — with the added cost that nobody knows it's gone.
 
-## Governance
+## Where control comes from
 
-More sessions means more output, so the controls must come from **configuration in the repo** rather than from watching. Hooks and permission settings there apply to every session automatically (`sdlc-hooks`). What a session does is logged and attributed to the person who ran it.
+More concurrency means less watching, so the controls have to be in the repo rather than in your attention. Hooks and permission rules apply to every session automatically (`sdlc-hooks`); session activity is logged and attributed. Anything you enforce by noticing does not survive this play.
 
-## Measuring it
+## Worth watching
 
-- **Leading** — concurrent sessions per person *while review quality holds*, and the share of the day spent steering rather than waiting.
-- **Lagging** — changes merged per person per week, read **alongside** the rework rate. Either number alone is misleading.
+Concurrent sessions **while review quality holds** — that qualifier is the whole measurement. And throughput read alongside rework, never on its own; merged-changes-per-week climbing while rework climbs faster is the failure this play invites.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

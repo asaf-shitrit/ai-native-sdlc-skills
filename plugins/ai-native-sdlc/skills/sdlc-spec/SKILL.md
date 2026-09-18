@@ -1,64 +1,62 @@
 ---
 name: sdlc-spec
-description: Turn an accepted intent.md into a committed requirements-and-design spec.md in one working session, with policy applied while the spec is written and contradictions flagged rather than silently resolved. Use when an intent has been accepted and needs designing, when asked to write requirements, a design doc, a technical spec, or a PRD, when collapsing "requirements phase" and "design phase" into one pass, or when a stakeholder needs to review a design before engineering plans against it. Covers the prompt, the flagged-concerns discipline, and what the reviewer checks.
+description: Turn accepted intent into a committed spec in one working session, applying policy while the design is written and surfacing contradictions instead of quietly resolving them. Use when an intent has been accepted and needs designing, when asked to write requirements, a design doc, a technical spec or a PRD, when collapsing separate requirements and design phases into a single pass, or when someone needs to review a design before implementation is planned. Covers the pass itself, the flagged-conflict discipline, and what the reviewer is actually checking.
 ---
 
-# Requirements and design as `spec.md`
+# From intent to spec
 
-Second artifact in the chain (see `ai-native-sdlc`). Requirements and design were separate phases run by separate teams for accountability reasons; the separation is slow and lossy. Here they collapse into one session, and the reviewer reviews rather than writes.
+Second file in the chain (`ai-native-sdlc`). Requirements and design were separate phases owned by separate people for accountability reasons. The accountability is worth keeping; the two-phase handoff is not — it's slow, and meaning leaks at the boundary.
 
-## Prerequisites
+Here it's one pass, and the reviewer reviews instead of writing.
 
-An accepted `intent.md` (`sdlc-intent`). Policies that must constrain the design — brand, security, compliance, UX — carry much more weight when they are written as skills (`sdlc-claude-md` covers when to write one), because then they apply while the spec is written instead of being discovered in a review weeks later.
+## Before you start
+
+An accepted intent file (`sdlc-intent`). Whatever policy must constrain the design — security rules, API conventions, accessibility, brand — carries far more weight when it's written down as a skill (`sdlc-claude-md`), because then it shapes the design as it's written rather than being discovered in review three weeks later.
 
 ## The pass
 
-Start from the intent, with the org's policy skills loaded:
+Load the intent and the policy skills, then ask for a design that:
 
-> Read the attached `intent.md` and produce a requirements and design spec for integrating it into our existing codebase. Apply the skills available to you so the plan conforms to our brand guidelines, security policies and UX standards. Document the spec fully as `spec.md`, ready to hand to the engineering team. Describe clearly any areas of concern, especially where you cannot satisfy contradicting policies.
+- solves the problem the intent states, in the existing codebase, not in the abstract
+- conforms to the policies in force, naming which one drove which decision
+- **calls out every place two requirements or two policies can't both hold**
 
-Run it by hand the first few times. Then codify it as a slash command. The end state is a non-interactive job fired by the intent's merge that opens `spec.md` as a PR — at which point the product owner's first involvement is the review.
+Run it by hand until you trust the shape, then make it a slash command. Eventually the intent's acceptance triggers it and opens the spec as a PR — at which point the first human involvement is the review.
 
-## Flagged concerns are the deliverable
+## Conflicts are the deliverable
 
-The single most valuable output is not the design, it is the list of things that cannot be cleanly satisfied. These are the points an analyst would have escalated.
+The design is the boring part. The valuable output is the list of things that can't be cleanly satisfied, because those are exactly what a careful analyst would have escalated.
 
-**Flag, do not resolve, when:**
-- Two policies contradict each other for this change
-- The intent's constraints cannot all hold at once
-- An open question from `intent.md` still has no answer
-- The design needs a decision that belongs to a named policy owner
+Surface rather than solve when:
 
-Say plainly what the conflict is and who owns each side. A spec that quietly picks a winner has hidden a decision that a human was accountable for.
+- two policies pull in opposite directions for this change
+- the intent's constraints can't all hold simultaneously
+- an unknown from the intent is still unknown
+- the decision belongs to someone who isn't in the room
 
-**Work the flagged concerns first.** Each one goes to its policy owner and gets resolved *before* engineering sees the spec.
+State the conflict plainly and name who owns each side. **A spec that silently picks a winner has hidden a decision a person was accountable for** — and it will resurface during implementation, when reversing costs more.
 
-## What the reviewer checks
+Resolve these first, with their owners, before anyone plans against the spec.
 
-Not prose quality. Two things:
+## What the review is for
 
-1. Does the spec solve the problem stated in `intent.md`?
-2. Are the intent's open questions answered, or explicitly carried forward?
+Not prose quality. Two questions:
 
-Then: commit `spec.md` alongside `intent.md`. The pair records what was asked for and what was decided.
+1. Does this solve the problem the intent described?
+2. Is every unknown either answered or deliberately carried forward?
 
-## The gate
+Then commit the spec next to the intent. The pair is the record: what was asked for, and what was decided.
 
-A human decides whether spec and intent progress to build, consulting a technical lead for anything the organization classes as higher risk. Accepting the spec is what starts planning (`sdlc-plan`).
+Progressing to implementation is a human decision, with a technical lead pulled in for anything the team treats as higher-risk.
 
-## Front-end work
+## Design-heavy work
 
-The clearest case for compressing the phases: mock the design from `intent.md`, iterate on the mock, then export it to the implementation session. The approved mock becomes the proof condition in `plan.md` and the target for the visual loop in `sdlc-feedback-loop`.
+For anything visual, iterate on a mock from the intent before writing the spec. The approved mock then becomes the proof condition in the plan (`sdlc-plan`) and the comparison target for the visual loop (`sdlc-feedback-loop`) — which is what makes UI work verifiable at all.
 
-## Governance
+## Worth watching
 
-The spec, the prompt that produced it, and the versions of the skills in force are all in version control. Policy is read and applied at authoring time. The reviewer signs off; flagged concerns route to named owners.
-
-## Measuring it
-
-- **Leading** — elapsed time between the `intent.md` commit and the `spec.md` commit for the same change (two git timestamps), against the old requirements-plus-design cycle.
-- **Lagging** — requirements rework after build starts: count `spec.md` commits dated after the first `plan.md` commit for the same change. `git log` gives this directly.
+Elapsed time between the intent commit and the spec commit. Then, later: spec edits landing *after* implementation began, which is the direct measure of what this pass failed to pin down.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

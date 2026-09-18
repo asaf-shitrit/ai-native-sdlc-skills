@@ -1,106 +1,106 @@
 ---
 name: sdlc-claude-md
-description: Turn institutional knowledge into files the agent reads — a tight CLAUDE.md for repo context and skills for policy that must be applied consistently. Use when the agent repeats a mistake, when onboarding context lives in people's heads or a stale wiki, when asked to write or trim a CLAUDE.md, when running /init and deciding what to keep, when a convention or standard is enforced inconsistently, and when deciding whether something belongs in CLAUDE.md, a skill, or just the prompt. Covers the CLAUDE.md template, the one-page rule, the twice-wrong rule, and the skill-vs-CLAUDE.md boundary.
+description: Move institutional knowledge out of heads and wikis into files the agent reads — a short CLAUDE.md for repo context, and skills for rules that must apply consistently. Use when the agent repeats a mistake, when onboarding knowledge is undocumented or stale, when asked to write or trim a CLAUDE.md, when running /init and deciding what to keep, when a convention is enforced inconsistently, or when deciding whether something belongs in CLAUDE.md, a skill, or just the prompt. Covers the boundary between the three, keeping the file short, and why a skill alone can't guarantee anything.
 ---
 
-# Institutional knowledge as files
+# Knowledge as files
 
-Knowledge that used to sit in heads and on wikis becomes files the agent reads, maintained by the whole team, reviewed like code.
+## Which container
 
-## Where does this belong?
-
-| It is… | Put it in |
+| The knowledge is | Put it in |
 |---|---|
-| Context a new joiner needs on day one for *this repo* — commands, conventions, architecture, the mistakes the team keeps making | `CLAUDE.md` |
-| Knowledge that must be applied **consistently**, often across repos, with a named policy owner — a security standard, an API convention, a brand rule | a **skill** |
-| True only for this one task | the prompt |
+| What a new joiner needs on day one for *this repo* — commands, conventions, layout, the traps | `CLAUDE.md` |
+| A rule that must apply **consistently**, usually across repos, with someone who owns it | a **skill** |
+| Relevant to this task only | the prompt |
 
-Do not write a skill for something that belongs in `CLAUDE.md` or a prompt. Do not put a cross-cutting policy in `CLAUDE.md` where only one repo sees it.
+The two failure modes are symmetric: a cross-cutting standard buried in one repo's `CLAUDE.md` where only that repo benefits, and a repo-specific quirk written up as a skill that then fires everywhere and gets ignored.
 
 ## CLAUDE.md
 
-### Building it
+`/init` writes a first draft from what's actually in the repo. Treat it as raw material — generated files are always too long, and length is the thing that kills this file.
 
-1. **Run `/init`.** Claude generates a starting file from what it finds.
-2. **Cut it down to what a new joiner needs on day one.** Generated files are always too long. Keep the build/test/lint commands, the conventions that actually matter, and the things the agent keeps getting wrong. Delete the rest.
-3. **Check it into git at the repo root** so the team shares one version and changes get reviewed.
-4. **Keep it under a page.** It is read at the start of every session; anything stale is burning context for no benefit.
+Cut to what someone needs on day one: **how to build, test and lint; the conventions that actually get enforced; the layout; and whatever the agent keeps getting wrong.** Delete the rest, including anything true of every repo in the language.
 
-### The twice-wrong rule
+**Keep it under a page.** It's read at the start of every session, so a stale paragraph costs context forever and pays nothing.
 
-When Claude makes the same mistake twice, the correction goes into `CLAUDE.md`. Not the first time — once is noise. Twice is a pattern, and the file is where patterns go. PR review feeds this too (`sdlc-pr-review`): when a review flags the same mistake a second time, the correction lands in `CLAUDE.md` as part of that review, and because review reads `CLAUDE.md`, it is caught from the next PR onward.
-
-### Template
+Commit it at the repo root. One shared version, changes reviewed like code.
 
 ```markdown
-# Payments service
+# orders-service
 
 ## Commands
-- Build: make build
-- Test: make test (unit), make itest (integration, needs docker)
-- Lint: make lint (runs in CI; fix before pushing)
+- Dev: bun run dev
+- Test: bun test          (unit)
+- Test: bun test:e2e      (needs `docker compose up -d`)
+- Check: bun run check    (types + lint; CI runs this)
 
 ## Conventions
-- Java 21, Spring Boot 3. No new Lombok.
-- Money is always BigDecimal, never double.
-- Every endpoint needs an integration test in src/itest.
+- Money in minor units as integers. Never floats, never Decimal strings.
+- Times are UTC instants at rest; format only at the edge.
+- Every route handler has a test that exercises the error path.
+- Zod schemas live next to the route, not in a shared types file.
 
-## Architecture
-- api/ holds REST controllers, core/ holds domain logic,
-  adapters/ talks to external systems.
-- Kafka events are defined in schemas/; never edit generated classes.
+## Layout
+- routes/ HTTP only — no business logic
+- domain/ pure, no imports from routes/ or db/
+- db/ queries and migrations; generated types in db/gen (do not edit)
 
-## Things Claude gets wrong
-- Do not bump dependency versions; the platform team owns them.
-- The legacy v1/ package is frozen; changes go in v2/.
+## Known traps
+- Don't upgrade deps to fix a type error; ask first.
+- webhooks/stripe.ts must stay idempotent — it gets replayed.
+- The seed script wipes the dev DB; never run it against a URL you didn't check.
 ```
 
-Add a **Verifying your work** section too — see `sdlc-feedback-loop`.
+**The rule that keeps it alive:** when the agent makes the same mistake twice, the correction goes in the file. Once is noise, twice is a pattern, and this is where patterns belong. Review feeds it too (`sdlc-pr-review`) — a finding raised for the second time should land here as part of that review, which closes the loop, since review reads this file.
+
+Add a verification section as well (`sdlc-feedback-loop`).
 
 ## Skills
 
-### Writing one
+A skill is a folder with a `SKILL.md`: frontmatter describing **when it should fire**, body describing **what to do**.
 
-1. **Pick one piece of knowledge that is enforced inconsistently today.**
-2. **Write it as a folder containing `SKILL.md`** — frontmatter says *when it triggers*, body says *what to do*. Write it from the policy owner's source of truth.
-3. **Place it**: `.claude/skills/<name>/` in the repo so it ships with the code, or distribute organization-wide as a plugin.
-4. **Test that it triggers.** Ask for the relevant task phrased several different ways and confirm the skill loads each time. An untriggered skill is not a control.
-5. **When the policy changes, change the skill** and have the policy owner sign off. Everyone picks up the new version in their next session.
+Write one by starting from a rule that's enforced inconsistently today. Get it from whoever owns the rule rather than from folklore. Then:
 
-### Example
+**Test that it triggers.** Ask for the relevant task phrased three or four different ways and confirm it loads each time. A skill that doesn't fire isn't a weak control — it's no control, and it's worse than nothing because people believe it's there.
+
+Ship it in the repo under `.claude/skills/` so it travels with the code, or distribute it as a plugin when it should apply everywhere. When the rule changes, change the skill; everyone picks it up next session.
 
 ```markdown
 ---
-name: secure-api-review
-description: Apply the API security standard. Use whenever creating or
-  modifying an external-facing endpoint, reviewing API code, or
-  generating an OpenAPI spec.
+name: migration-safety
+description: Rules for schema changes. Use whenever adding, editing or
+  reviewing a migration, altering a table, or changing a column's type
+  or nullability.
 ---
 
-# Secure API review
+# Migration safety
 
-When you create or change an API endpoint:
-1. Authentication: every endpoint requires the gateway JWT;
-   no anonymous routes outside /health.
-2. Input validation: validate request bodies against the OpenAPI
-   schema and reject unknown fields.
-3. Audit: every state-changing endpoint emits an audit event with
-   actor, action, entity and timestamp.
-4. Data classification: fields tagged pii in the schema must never
-   appear in logs or error messages.
+Deploys are rolling, so old and new code run against the same schema
+for a few minutes. Every migration must be safe for both.
 
-Run scripts/check-endpoints.sh and include its output in your summary.
+- Additive first. Add a nullable column, backfill, then enforce —
+  three deploys, not one.
+- Never rename or drop in the same release that stops using the
+  column. Drop it a release later.
+- No table rewrites on tables over ~1M rows without a written plan;
+  lock the table and the API stalls.
+- Every migration has a tested down path, or an explicit comment
+  saying why it is irreversible.
+
+Before finishing, print the migration and state which of the rules
+above applies to it.
 ```
 
-### A skill is an advisory control
+## A skill does not guarantee anything
 
-It makes the agent *likely* to apply the policy while the code is written. Nothing forces a session to comply. **A policy that must always hold needs something deterministic behind it** — a hook that blocks the action (`sdlc-hooks`) or a review pass that re-checks at the PR (`sdlc-pr-review`). The skill makes violations rare; the hook makes them close to impossible.
+It makes compliance *likely* — it's read at the moment the work happens, which is the right moment. But nothing forces a session to follow it.
 
-## Measuring it
+**So anything that must hold without exception needs something deterministic behind it**: a hook that blocks the action (`sdlc-hooks`), or a review pass that re-checks at the PR (`sdlc-pr-review`). Use the skill to make violations rare and the hook to make them impossible. Treating an advisory control as a guarantee is the most common mistake in this whole area.
 
-- **Leading** — how often the agent repeats a mistake `CLAUDE.md` should have caught; time from a policy change being approved to the updated skill merging.
-- **Lagging** — time to first merged PR for a new team member; PR review findings citing a policy, which should fall toward zero once the skill applies it at authoring time. If they do not fall, either the skill is not triggering or its text has drifted from the real policy.
+## Worth watching
+
+Repeat mistakes that the file should already have caught — if they persist, either the correction never landed or the file is too long to be read carefully. For skills: review findings citing a rule the skill covers should trend toward zero, and if they don't, the skill isn't firing or has drifted from the real rule.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

@@ -1,95 +1,103 @@
 ---
 name: sdlc-close-loop
-description: Close the SDLC loop — a deterministic detector watches production, invokes the agent when a control band is breached, and what it finds re-enters the pipeline as intent.md. Use when designing autonomous or headless agent workflows, when asked to run Claude non-interactively or from CI/cron/webhook, when setting up monitoring that acts rather than just alerts, when defining autonomy tiers or what an agent may do unsupervised, when post-mortem actions never reach the codebase, or when incidents wait on a person to restart the process. Covers control bands, the tiered response config, rollback, and per-environment autonomy.
+description: Close the lifecycle loop — a deterministic detector watches production, invokes the agent when a threshold is crossed, and whatever it finds re-enters the pipeline as a new intent. Use when designing autonomous or headless agent workflows, when asked to run the agent non-interactively from CI, cron or a webhook, when monitoring should act rather than only alert, when defining how much autonomy an agent gets per environment, when post-mortem actions never reach the codebase, or when incidents wait on a person before anything starts. Covers deterministic detection, tiered response, rollback, and the boundary the agent cannot cross.
 ---
 
 # Closing the loop
 
-Maintenance is normally reactive: an alert fires at 3 a.m. and is missed, a ticket sits in the backlog, post-mortem actions never reach the codebase because another fire started. Every path needs a person to restart the process.
+Maintenance is the stage that stays manual longest. An alert fires overnight and is missed. A ticket sits until someone has capacity. Post-mortem actions never land because the next incident arrives first. Every path needs a person to restart it, and people are the scarce thing.
 
-Closing the loop means a trigger — a breached control band, a ticket, a channel message, a schedule — invokes the agent **with no person in the invocation path**. It diagnoses, acts only through gated routes, and writes what it finds as `intent.md`, which re-enters at Plan. People triage and review that work; they no longer have to start it.
+Closing the loop means a trigger — a threshold crossed, a ticket filed, a message posted, a schedule elapsing — starts the work **with nobody in the invocation path**. The agent investigates, acts only through routes you've approved, and writes what it found as a new intent. People triage and review; they no longer have to notice and begin.
 
-## Prerequisites
+## What has to exist first
 
-The `intent.md` format (`sdlc-intent`) — the loop needs a structured output to restart from. A PR review gate (`sdlc-pr-review`), hooks as an action boundary (`sdlc-hooks`), and **a rollback path that has actually been rehearsed**.
+An intent format (`sdlc-intent`), because the loop needs a structured way to hand work back. A review gate (`sdlc-pr-review`) and hooks as an action boundary (`sdlc-hooks`), because this is where an agent runs unsupervised. And **a rollback path you have actually rehearsed** — the highest tier calls it, so it cannot be a runbook nobody has executed.
 
 ## Detection stays deterministic
 
-⚠️ **No model is involved in detection.** A script watches the metric; the model is invoked only *after* a band is breached, and the tier sets what it may do. Mixing the two makes the trigger unexplainable, which is exactly what you cannot afford at 3 a.m.
+⚠️ **No model participates in detection.** A script decides whether something is wrong; the agent is invoked only after that decision, and its tier governs what it may then do.
 
-1. **Pick one metric with a stable rolling baseline** — CI test failure rate, post-deploy 5xx rate, PR cycle time.
-2. **Write the detection script**: typically mean and standard deviation over a rolling window, with rules (Western Electric or similar) so the bands catch slow drift as well as spikes. Version-controlled and unit-tested, like any other code.
-3. **Define response tiers in version-controlled config.**
-4. **Pick the trigger layer** — a scheduled CI workflow, a webhook from the existing monitoring stack, or a cron job inside the network. The agent runs stateless and non-interactive, so a loop can begin and end without anyone starting it.
+This is not a performance concern. A trigger you can't explain is a trigger you can't trust at 4am, and the first false alarm that wakes someone will end the experiment.
 
-### Tiered response
+Pick **one** metric with a baseline stable enough to have a normal range — test failure rate, post-deploy error rate, queue depth, cycle time. Compute the band over a rolling window; use rules that catch sustained drift and not only spikes, since the slow version is the one people miss. Version the script and unit-test it like anything else, because a broken detector fails silently.
+
+## Tiered response
+
+Capability escalates with severity, and the top tier still stops short of production:
 
 ```yaml
-metric: ci_test_failure_rate
-baseline: rolling_30d
-rules: western_electric
+signal: post_deploy_error_rate
+window: rolling_14d
+detector: ewma            # sustained drift, not just spikes
+
 tiers:
-  1sigma: { action: log }
-  2sigma: { action: diagnose,
-            tools: "Read,Grep,Bash(gh run view *)" }
-  3sigma: { action: propose,
-            routes: [pull_request, runbook:rollback-deploy] }
+  warn:
+    at: 2_sigma
+    do: record            # log it; build the baseline for later
+  investigate:
+    at: 3_sigma
+    do: diagnose
+    allow: [read, search, "logs:query", "ci:read"]
+    output: written_finding
+  respond:
+    at: 3_sigma_sustained
+    do: propose
+    via:
+      - open_pull_request
+      - runbook: rollback_last_deploy
+    never: [direct_production_write, force_merge, credential_access]
 ```
 
-Escalating capability, not escalating urgency: log → read-only diagnosis → propose, and even "propose" means **open a PR into the review gate or trigger a pre-approved runbook** — never act directly on production.
+The `never` list is the point. **The agent may work right up to the production gate and cannot pass it** — everything it produces arrives as a proposal through a route a human already approved.
 
-## The output is an `intent.md`
+## The output is an intent
 
-The agent writes its diagnosis in the Plan format: the anomaly and its evidence, a proposed outcome, affected systems, open questions. From there the finding goes through the pipeline like anything else — which is the point. There is no separate incident path that skips review.
+The finding is written in the normal intent format: what moved, the evidence, what should change, what's affected, what's still unknown. From there it goes through the pipeline like any other work.
 
-Then: the service owner or on-call triages the queue. Fix now, schedule, or dismiss — and **dismissals tune the bands**, so noise falls over time rather than being endured.
+That's deliberate. **There is no express lane for incident-driven changes** — the path that skips review is exactly the path that produces the next incident.
 
-When a fix ships, **add an eval for the incident** (`sdlc-agent-evals`) so the class is protected against from then on.
+Someone triages the queue: fix now, schedule, or dismiss. **Dismissals tune the bands**, so noise decreases over time instead of being endured until people mute the channel.
 
-## Worked examples
+When a fix ships, add an eval for it (`sdlc-agent-evals`) so that failure mode is covered permanently.
 
-- CI test failure rate breaches 3σ → the agent quarantines the flaky test or opens a revert PR; the review gate decides.
-- Post-deploy 5xx rate breaches 3σ with a deployment in the window → the agent triggers the existing rollback pipeline.
-- PR cycle time trips a drift rule → the agent writes a report for engineering leadership. The same harness works for process metrics, not just production ones.
+## Running headless
 
-## Running the agent headless
+Start read-only. Judgment steps that don't write anything are where this earns trust:
 
-- **Start with read-only judgment steps.** `claude -p` in a pipeline job to triage a failed build, summarize a flaky test, or draft a changelog:
-  ```yaml
-  - name: Triage failed build
+```yaml
+  - name: Explain the failure
     if: failure()
-    run: >
-      claude -p "Read the build log at out/build.log. Identify the most
-      likely cause, say whether the failure looks flaky or real, and write a
-      three-line summary for the PR thread." >> triage.md
-  ```
-- **Add write steps behind the existing gates** — fixing lint, updating generated docs, addressing review comments. Anything written arrives as a PR through branch protection; **the agent has no route to push to main**.
-- **Sandbox execution.** Agent jobs run in containers under a network policy with short-lived scoped tokens, holding no production credentials by default.
-- **Expose deployment through MCP**, scoped per environment, so deployment powers are an allowlist rather than a shell script with credentials.
+    run: |
+      claude -p "$(cat <<'PROMPT'
+      Read ci-output.log. Say what failed, whether it looks like a real
+      regression or infrastructure flake, and what evidence points that
+      way. Three sentences. If you cannot tell, say so.
+      PROMPT
+      )" --allowedTools "Read,Grep" >> "$GITHUB_STEP_SUMMARY"
+```
 
-## Tier autonomy by environment
+Then add write steps **behind the gates you already have** — fixing lint, regenerating docs, addressing review comments. Everything arrives as a PR through branch protection; there is no direct path to the default branch.
 
-- **Development** — the agent deploys freely
-- **Staging** — somewhere in the middle
-- **Production** — the agent prepares the release; a named release manager authorizes it; a hook enforces the gate
+Run these jobs in a sandbox with short-lived scoped credentials and no standing production access. Expose operational actions as scoped tools rather than shell commands with credentials, so what the agent can do is an allowlist rather than whatever the shell permits.
 
-The governing principle: **the agent may act up to the production gate and cannot pass it.**
+## Autonomy by environment
 
-**Rollback should be the most rehearsed path in the pipeline** — a single command the agent can run, exercised regularly in staging. The 3σ tier calls it, so it has to be proven *before* it is needed.
+| Environment | Agent may |
+|---|---|
+| Development | Act freely; mistakes are cheap and instructive |
+| Staging | Deploy and exercise, including rehearsing rollback |
+| Production | Prepare and propose. A named person authorizes; a hook enforces it |
 
-## Work arriving through other channels
+**Rollback should be the best-rehearsed path you have** — one command, exercised regularly in staging, proven long before the tier that calls it ever fires.
 
-Incidents also arrive as a 10pm message in a chat channel. An agent present in the channel under its own identity gives every incident a first responder, and the response becomes part of the record: request, diagnosis, human authorization and fix all stay where the incident was handled. Small bounded fixes arrive as a PR through the review gate; anything larger is written up as `intent.md` and starts at Plan. The post-mortem goes to a version-controlled lessons file that future investigations read.
+## Work arriving from elsewhere
 
-## Governance
+Incidents also show up as a message at 10pm. An agent present in that channel gives every incident a first responder, and keeps the record where the work happened: what was asked, what was found, who authorized the fix. Small bounded fixes become PRs through the normal gate; anything larger becomes an intent. The write-up goes somewhere version-controlled that future investigations can actually read.
 
-Tier boundaries are enforced from version-controlled config, with permissions denying production access. Invocations, findings and triage decisions are logged with timestamps. A service owner triages and approves; resulting changes go through the normal PR gate; the runbooks the agent may trigger were approved in advance.
+## Worth watching
 
-## Measuring it
-
-- **Leading** — time from band breach to an `intent.md` in the triage queue, against the old time from incident to post-mortem action.
-- **Lagging** — share of findings that become merged fixes, and repeat incidents of the same class, which should fall as fixes add cases to the eval suite.
+Time from threshold crossed to a triageable finding, against how long it used to take for anyone to notice. Then: what share of findings become merged fixes — and repeat incidents of the same class, which should decline as fixes accumulate in the eval suite. If findings pile up untriaged, the bands are too loose and the loop is generating work rather than absorbing it.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

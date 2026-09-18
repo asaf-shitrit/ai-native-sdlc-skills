@@ -1,74 +1,85 @@
 ---
 name: sdlc-pr-review
-description: Give every PR the same set of agentic review passes — bugs, security, and compliance against spec.md and plan.md — with findings ranked by severity so human attention goes to intent and risk. Use when PRs queue or review quality varies with the reviewer's load, when setting up automated review, when asked to write a REVIEW.md or review policy, when tuning nit volume, when addressing review comments on an agent-authored PR, or when deciding what a human must still approve. Covers the passes, the Important-vs-nit line, the fix loop, and feeding findings back into CLAUDE.md.
+description: Give every pull request the same review passes — correctness, security, and whether the change matches what was agreed — with findings ranked so human attention lands on intent and risk. Use when PRs queue or review depth varies by who picks them up, when setting up automated review, when asked to write a review policy, when review comments are drowning in style nits, when addressing feedback on an agent-authored PR, or when deciding what a human must still approve. Covers the policy file, keeping severity meaningful, and routing repeat findings back into the repo's context.
 ---
 
-# AI in the PR review loop
+# Review that scales with output
 
-Review capacity used to be planned around human output: a PR waits for a reviewer to read all of it, quality varies with their load, the author chases, the backlog grows. When an agent writes most of the diff, reading every line by hand stops being possible at all.
+Review capacity was sized for human authorship. One reviewer reads the whole diff, depth varies with how busy they are, the author chases, the queue grows. Once an agent writes most of the diff, reading every line stops being possible — and "review it anyway" quietly becomes skimming with a rubber stamp on the end.
 
-The answer is not less review. It is **identical passes on every PR, ranked by severity**, with human attention moved up a level — to whether the change does what the plan intended and whether the risk is acceptable.
+The fix isn't less review. It's **uniform passes on every PR, findings ranked by severity, and human attention moved up a level** — to whether this change does what was agreed and whether the risk is acceptable.
 
-Review runs in both directions: the agent reviews incoming PRs, and addresses review comments on its own.
+It runs both directions: the agent reviews incoming changes, and addresses findings on its own.
 
-## Prerequisites
+## What you need
 
-An up-to-date `CLAUDE.md` (`sdlc-claude-md`); skills, if review passes enforce written policies; `spec.md` and `plan.md` if the compliance pass is to mean anything (`sdlc-spec`, `sdlc-plan`).
+A current `CLAUDE.md` (`sdlc-claude-md`) — review reads it, which is what makes the feedback loop below work. Encoded rules where policy is involved. And a committed spec and plan if you want the third pass to mean anything (`sdlc-spec`, `sdlc-plan`).
 
-## The review policy: `REVIEW.md`
+## The policy file
 
-At the repo root, divided into the passes that matter here:
+Committed at the repo root, so review depth is a property of the repo rather than of whoever opened the PR.
 
 ```markdown
-# Review instructions
+# Review policy
 
 ## Passes
-Run three passes and tag each finding with its pass:
-- Bugs: logic errors, broken edge cases, subtle regressions
-- Security: injection risks, authentication gaps, PII in logs
-- Compliance: the change matches spec.md, plan.md and our design principles
+Tag every finding with the pass that produced it.
 
-## What Important means here
-Reserve Important for findings that would break behavior, leak data
-or breach a policy. Style and naming are nits.
+1. Correctness — logic errors, unhandled edge cases, broken
+   invariants, concurrency and ordering mistakes, error paths that
+   swallow failures.
+2. Security — injection, missing authorization, secrets or personal
+   data in logs and error responses, unsafe deserialization.
+3. Agreement — does the change do what spec.md described and what
+   plan.md said it would? Call out anything implemented that nobody
+   asked for.
 
-## Cap the nits
-Report at most five nits per review; summarize the rest as a count.
+## Severity
+Blocking     breaks behavior, loses or exposes data, violates a stated rule
+Worth fixing real, but the change is still safe to ship
+Nit          style, naming, preference
 
-## Do not report
-Generated files under src/gen/ and anything CI already enforces.
+Blocking is for the first definition only. If everything is blocking,
+nothing is.
+
+## Volume
+At most five nits, then a count. Prefer one accurate finding to four
+speculative ones — a reviewer who learns the findings are noisy stops
+reading them, and then this whole thing is decoration.
+
+## Out of scope
+Generated code, vendored dependencies, lockfiles, and anything the
+type checker or linter already enforces in CI.
 ```
 
-Four things every `REVIEW.md` needs: **the passes**, **what Important means**, **a nit cap**, **an exclusion list**. Without the last two, volume drowns signal and reviewers start skimming — which is the failure mode this play exists to prevent.
+Four things it has to answer: **which passes**, **what blocking means**, **how much noise is tolerated**, **what to ignore.** Miss the last two and volume drowns the signal within a week.
 
-## The human threshold
+## What stays human
 
-**Findings do not approve or block a PR on their own.** Branch protection still requires approval from a code owner. Severity counts are published as a machine-readable tally, so gating merges on them is a separate, deliberate choice.
+**Findings don't approve or block on their own.** Branch protection still requires a person. Gating merges on severity counts is a separate decision you make deliberately, not a default you inherit.
 
-Separation of duties is what makes this safe: **the agent that wrote the code has no route to approve it.**
+The property that makes this safe is simple: **whatever wrote the code cannot approve it.** That holds however much of the review is automated.
 
 ## The fix loop
 
-- Tag `@claude` on a review comment and the agent addresses it and pushes the fix. The thread records both the request and the change.
-- For PRs the agent opened, let it run the PR to merge: sweep unresolved review comments and failing checks, address them, push, repeat until the PR is green and waiting only on code-owner approval. Wrapping that sweep in a slash command is worth it.
+Tag the agent on a finding and it pushes a fix; the thread keeps both the request and the change, so the reasoning survives.
 
-## Findings feed back
+For PRs it opened, let it run the loop to completion — sweep unresolved comments and failing checks, fix, push, repeat until the PR is green and waiting only on human approval. Worth wrapping in a command once you've done it twice by hand.
 
-**When review flags the same mistake a second time, the correction goes into `CLAUDE.md` as part of that review.** Because review reads `CLAUDE.md`, it is caught from the next PR onward — the loop closes on itself. Review should also flag when a change has left `CLAUDE.md` out of date.
+## Findings feed the repo
 
-## Tuning
+**A finding raised twice is a documentation bug, not a review finding.** Put the correction in `CLAUDE.md` as part of that review. Since review reads `CLAUDE.md`, it's caught from the next PR onward and stops consuming attention.
 
-Once a month: rate the findings so the reviewer improves, cap nit volume in `REVIEW.md`, and exclude generated paths and anything CI already enforces. An untuned reviewer trends toward noise.
+Review should also flag when a change has made the existing context wrong — that file goes stale silently, and this is the only routine moment anyone notices.
 
-## Governance
+## Keep it tuned
 
-`REVIEW.md` is applied to every PR identically. Findings, fixes, ratings and approvals are logged in the PR history, so **the PR is the audit record**. Approval comes from a human through branch protection, informed by the findings.
+Periodically: rate findings so the useful ones are reinforced, tighten the nit budget, extend the exclusions. An untuned reviewer trends toward volume, and volume is how this gets switched off.
 
-## Measuring it
+## Worth watching
 
-- **Leading** — time to first review (should fall to minutes), and the share of review comments resolved without a human touching the branch.
-- **Lagging** — defects and vulnerabilities caught before merge, set against those escaping to production.
+Time to first review, which should be minutes. The share of findings resolved without a person touching the branch. Then the one that matters: defects caught before merge versus defects found in production.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

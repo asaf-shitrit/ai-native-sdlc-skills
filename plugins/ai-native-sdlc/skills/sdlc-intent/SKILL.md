@@ -1,78 +1,77 @@
 ---
 name: sdlc-intent
-description: Capture an idea, ticket, bug report, or production alert as a committed intent.md proto-spec — what is wanted, why, who and what it affects, under which constraints, and what is still open. Use at the very start of any piece of work, when someone says "I have an idea", "we should build X", "users keep complaining about Y", when a ticket or incident needs turning into actionable work, or when asked to write up a proposal, proto-spec, or problem statement before any design or code. Covers the template, the brainstorm-first interview, where intent lives in the repo, and when NOT to bother.
+description: Capture an idea, ticket, bug report or production alert as a committed intent file — the problem, the outcome wanted, who and what it touches, the constraints, and what is still unknown. Use at the start of any piece of work, when someone says "I have an idea" or "we should build X", when users keep hitting something, when a ticket or incident needs turning into actionable work, or when asked to write a proposal, proto-spec or problem statement before any design or code. Covers the interview, the template, where the file lives, and when writing one is a waste of time.
 ---
 
-# Capture intent as `intent.md`
+# Capture the intent
 
-The first artifact in the chain (see `ai-native-sdlc`). It exists so an idea stops waiting for someone to write it up, and so what reaches engineering is the originator's own meaning rather than something four handoffs removed from it.
+First file in the chain (`ai-native-sdlc`). It exists so that an idea stops waiting on someone with the right job title to write it up, and so what reaches implementation still resembles what the originator actually meant.
 
-## When this applies
+## Is it worth writing?
 
-Any of these routes produce an intent:
+**Yes** when a second person would need it written down to act, or when someone six months out will ask why this was built.
 
-- A person has an idea and describes it in their own words
-- A ticket is filed
-- An alert or breached control band surfaces a problem (see `sdlc-close-loop`)
-- A security or codebase finding is too big to fix in one PR
+**No** for a typo, a rename, a one-line fix, or anything where the write-up costs more than the work. Judgment call, and erring toward "no" is cheaper than erring toward ceremony.
 
-**Skip it** for a typo, a one-line fix, or anything where writing the intent costs more than doing the work. The test: would a second person need this written down to act on it, or to judge later whether it was the right thing to build?
+The originator can be anyone — the person with the idea, whoever triaged the ticket, or an agent that noticed a metric move (`sdlc-close-loop`). The route in doesn't change what gets written.
 
-## How to run it
+## Interview before template
 
-1. **Let them describe the problem in their own words.** No formal language. What they cannot do today, who is affected, what better looks like, what is out of scope. Do not reach for the template yet.
-2. **Brainstorm until the idea is concrete.** Ask what an analyst would ask: scope, users, constraints, success criteria, what happens today instead. Push on vagueness — "faster" and "better UX" are not outcomes. Stop when you could hand it to someone who has never heard of it.
-3. **Write it as `intent.md`** using the template below (or the org's, if one is encoded as a skill).
-4. **Read it back and let the originator correct anything you misunderstood.** This is the whole point of the artifact; do not skip to committing.
-5. **Commit it** to the intent home. Author and timestamp join the record.
+The failure mode is reaching for the template immediately and filling it with the vague version of the idea.
 
-## Template
+Let them describe the problem however they describe it. What can't they do today? Who else hits this? What does better look like? What's explicitly not in scope? Then push where it's soft — "slow", "confusing" and "better UX" aren't outcomes, and a problem without a number in it usually hasn't been looked at yet.
+
+Stop when you could hand it to someone who's never heard of it.
+
+## The file
 
 ```markdown
-# Intent: claims status self-service
+# Intent: drafts survive a refresh
 
-Author: J. Ortiz (claims operations). Status: draft.
+Raised by: T. Okafor (support). Status: draft.
 
 ## Problem
-Customers phone the contact center to ask where their claim is.
-Handlers spend roughly a third of call time on status-only queries.
+Long-form posts are lost when the editor tab reloads. 14 support
+tickets this quarter; every one of them a user who had written
+something substantial and had no way to get it back.
 
-## Proposed outcome
-Customers see claim status, next step and expected date in the portal.
+## Outcome wanted
+An in-progress draft is recoverable after an unexpected reload,
+without the author doing anything to save it.
 
-## Affected users and systems
-Claims handlers, portal team, claims-core API.
+## Touches
+Editor, drafts API, whatever we pick for local persistence.
 
 ## Constraints
-No new PII in the portal session. Existing authentication only.
+Cannot slow typing. Draft bodies must not land in analytics.
 
-## Open questions
-Do third-party loss adjusters need access too?
+## Unknown
+Do we restore silently, or prompt? Does this extend to the
+mobile web editor, or is that a separate change?
 ```
 
-Sections that earn their place: **Problem** (with a number in it wherever possible), **Proposed outcome**, **Affected users and systems**, **Constraints**, **Open questions**. Anything else is optional.
+Five things earn their place: **the problem** (with evidence), **the outcome**, **what it touches**, **the constraints**, **what's still unknown**. Anything else is optional and usually noise.
 
-Carry open questions forward rather than guessing at them — `sdlc-spec` either answers them or escalates them.
+Leave the unknowns unresolved. Guessing at them here buries a decision that `sdlc-spec` should surface deliberately.
+
+## Then
+
+**Read it back.** The originator corrects whatever got mangled. This is the entire point of writing it down — skipping straight to commit produces a confident record of a misunderstanding.
+
+**Commit it.** Author and timestamp attach themselves. A reviewer picks it up from there and decides whether it proceeds; that accept-or-close decision is the gate, and it belongs to a person.
 
 ## Where it lives
 
-- **Single product** → an `intent/` folder in the product repo. Simplest, and it keeps the artifact chain next to the code derived from it.
-- **Monorepo** → a directory.
-- **Intent spanning many repos** → a dedicated intent repo, but only then; it is overhead otherwise.
+One product, one repo → a folder in that repo, so intent sits next to the code that came out of it. Monorepo → a directory. A separate repo only once intent genuinely spans many codebases; before that it's overhead.
 
-Non-engineers do not need git. A version-control connector (e.g. the GitHub connector on claude.ai) lets Claude commit the markdown on their behalf.
+Contributors without git don't need git — a version-control connector lets the agent commit markdown for them.
 
-If a ticketing tool already holds the record, decide which is authoritative — see the source-of-truth section in `ai-native-sdlc`.
+If a tracker already holds the record, decide which one is authoritative before you have two (`ai-native-sdlc`).
 
-## Governance
+## Worth watching
 
-The committed file *is* the evidence: author, timestamp, full revision history. The accept/reject decision that promotes an intent to design is recorded as the merge or the closing review. A product owner makes that call, not the agent.
-
-## Measuring it
-
-- **Leading** — time from first conversation to a committed `intent.md`, read off git history. Expect weeks of elicitation to collapse to hours.
-- **Lagging** — survival rate: the share of intents accepted into design rather than closed. Plus the number of edits to `intent.md` made *after* the first `spec.md` commit, which measures how much was missed the first time.
+How long from "someone had the thought" to a committed file. And the share of intents that get accepted rather than closed — a very high acceptance rate usually means the gate isn't real.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

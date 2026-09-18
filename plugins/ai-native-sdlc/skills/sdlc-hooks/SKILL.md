@@ -1,43 +1,43 @@
 ---
 name: sdlc-hooks
-description: Make a rule deterministic with hooks — block edits to protected paths, run formatters after edits, keep credentials out of diffs, and pause an action until a named human approves. Use when a policy must hold without exception, when a skill or CLAUDE.md instruction keeps getting ignored, when an approval gate must survive automation (release authorization, change sign-off, protected paths), when asked to configure .claude/settings.json, or when deciding between a skill and a hook. Covers allow/ask/block, the settings shape, an example gate script, and where hooks belong in a session.
+description: Make a rule deterministic with hooks — block writes to protected paths, run a formatter after edits, keep secrets out of a diff, or hold an action until a named person approves. Use when a rule must hold every time, when a documented convention keeps getting ignored, when an approval must survive automation (releases, migrations, infrastructure, protected paths), when asked to configure settings.json or write a hook script, or when deciding whether something should be a skill or a hook. Covers allow/ask/block, where each belongs in a session, and why the block message matters as much as the block.
 ---
 
-# Hooks: the deterministic layer
+# Hooks: the part that actually holds
 
-A skill is advisory — it makes the agent *likely* to comply. A hook is deterministic: it runs on every matching action, for everyone, every time.
+A documented rule is advisory — it makes compliance likely. A hook is deterministic: it runs on every matching action, for everyone, whether or not anyone remembered it.
 
-**Back any skill whose policy has to hold without exception.** The skill makes violations rare; the hook makes them close to impossible.
+**Put a hook behind any rule whose violation you can't live with.** Documentation makes violations rare; the hook makes them not happen. The two together is the working combination — a hook with no explanation is obeyed but not understood, and documentation with no hook is understood but not obeyed.
 
 ## Three verdicts
 
-- **Allow** — pre-approve the safe inner loop, so the deny rules do not turn into prompt fatigue
-- **Block** — refuse the action outright (exit 2; the message goes back to the agent)
-- **Ask** — pause until a specific person approves
+- **allow** — pre-approve the safe inner loop, so routine commands don't generate a stream of prompts. Without this the rest becomes noise people click through.
+- **block** — refuse outright. Exit non-zero; the message goes back to the agent.
+- **ask** — hold until a specific person approves.
 
-## Build-time guardrails vs. approval gates
+## Where each belongs
 
-Most of an agent's actions are file edits and shell commands during implementation, so that is where hooks fire most often.
+Most agent actions are file edits and shell commands during implementation, so that's where hooks fire most.
 
-**Guardrails** (no human involved — use freely):
-- Block edits to protected paths: generated classes, a frozen package, migrations or infra without a change ticket
-- Run the formatter and linter after file edits, so drift never accumulates
-- Keep credentials out of the diff
-- Block edits to test files during a fix task (`sdlc-feedback-loop`)
-- Keep `plan.md` in sync with the diff (`sdlc-plan`)
+**Guardrails — no human in the loop. Use these freely:**
 
-Guardrails must be **fast and scoped to the file that changed**. Heavier checks — the full test suite — belong at the commit or the PR, not on every edit.
+| Guard | Why |
+|---|---|
+| Block writes to generated output, vendored code, frozen packages | The agent can't know these are off-limits by looking at them |
+| Format and lint after an edit | Drift never accumulates; review never spends attention on it |
+| Reject secrets in a staged diff | Cheapest possible place to catch it |
+| Block test edits during a fix task | Protects the check from whoever is fixing the thing it checks (`sdlc-feedback-loop`) |
+| Require the plan to change when the diff leaves it | Keeps the artifact honest (`sdlc-plan`) |
 
-**Approval gates** (a human must say yes):
-- Release authorization for a production deploy
-- Change-management sign-off
-- Anything where the organization requires a named approver
+Guardrails must be **fast and scoped to what changed**. A hook runs on every matching action, so a slow one taxes the whole session. The full test suite belongs at commit or CI, not on every file write.
 
-⚠️ **An approval prompt during the build puts a person back on the critical path of every session running in parallel.** Keep gates at the release boundary; keep the build phase to allow/block only.
+**Gates — a person must say yes:** production releases, destructive data operations, infrastructure changes, anything with a named approver in a process you can't unilaterally change.
+
+⚠️ **Keep gates at the boundary, not in the build.** An approval prompt mid-implementation blocks every parallel session at once and trains people to approve reflexively — which costs you the gate you were trying to build.
 
 ## Shape
 
-`.claude/settings.json`, checked into git so the team shares it:
+Project hooks live in `.claude/settings.json`, committed, so the team shares one definition:
 
 ```json
 {
@@ -46,8 +46,10 @@ Guardrails must be **fast and scoped to the file that changed**. Heavier checks 
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/production-gate.sh" }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-release.sh"
+          }
         ]
       }
     ]
@@ -55,42 +57,47 @@ Guardrails must be **fast and scoped to the file that changed**. Heavier checks 
 }
 ```
 
-The gate itself, `.claude/hooks/production-gate.sh`:
-
 ```bash
-#!/bin/bash
-# Production deploys require a named release authorization
-cmd=$(jq -r '.tool_input.command' < /dev/stdin)
-if [[ "$cmd" == *"deploy"* && "$cmd" == *"production"* ]]; then
-  if [ -z "$RELEASE_APPROVAL" ]; then
-    echo "Production deploys need a release authorization." >&2
-    exit 2   # exit 2 blocks the action; the message goes to Claude
+#!/usr/bin/env bash
+# Hold anything that ships to production until a release is authorized.
+set -euo pipefail
+
+cmd=$(jq -r '.tool_input.command // ""')
+
+if grep -qE '(^|[[:space:]])(fly deploy|kubectl apply|terraform apply)' <<<"$cmd" \
+   && grep -qE '(prod|production)' <<<"$cmd"; then
+
+  if [[ -z "${RELEASE_TICKET:-}" ]]; then
+    cat >&2 <<'MSG'
+Blocked: production changes need an authorized release.
+
+  Why:  every production change is traceable to a named approver.
+  Fix:  get sign-off, then re-run with RELEASE_TICKET=<id> set.
+  Who:  whoever is on release duty this week.
+MSG
+    exit 2
   fi
 fi
+
 exit 0
 ```
 
-## A block must explain itself
+Gates that individuals must not be able to disable belong in settings owned by whoever administers the machines, not in the repo — anything in the repo can be edited by anyone who can edit the repo.
 
-When a hook stops an action, the reason **and the route to approval** appear in the agent's output. A bare "blocked" costs a human round trip to decode; "needs release authorization, ask the release manager" does not. This is the difference between a gate people route around and one they use.
+## Make the block teach
 
-## Setting the gates
+When a hook stops something, the output must carry **why, and how to proceed legitimately**. A bare "blocked" costs a human round trip to decode, every time, forever. The version above costs nothing and routes the person correctly.
 
-1. List the human approval gates that must survive — with whoever owns change management and compliance, if that applies.
-2. Express each as a hook: a script that runs before the action and returns allow, ask, or block.
-3. Team hooks go in `.claude/settings.json` in git. Gates that individual engineers must not be able to switch off go in managed settings owned by the platform or IT admin.
+This is the difference between a gate people use and a gate people work around.
 
-## Governance
+## Adjacent controls
 
-Hooks *are* the approval gates. The condition is enforced every time, for everyone. Allow and block decisions are logged with a timestamp. The gate also defines what counts as approval — an approved change ticket, the release manager's sign-off.
+Hooks govern the agent's actions. Two other layers matter and neither substitutes for the other: **permission rules** on which tools and commands are available at all, and **sandboxing** at the OS level for filesystem and network isolation. Denying a network tool doesn't stop a shell command reaching the network — only the sandbox does. See `code.claude.com/docs/en/hooks`, `/permissions`, `/sandboxing`.
 
-Related deterministic controls worth pairing with hooks: permission allow/deny rules, and OS-level sandboxing for filesystem and network isolation (a tool-level deny on web fetching does not stop a shell command reaching the network). See `code.claude.com/docs/en/settings`, `/permissions`, `/sandboxing`.
+## Worth watching
 
-## Measuring it
-
-- **Leading** — time spent waiting at each approval gate. Every hook decision carries a timestamp and an allow/block verdict, so the wait is visible per gate.
-- **Lagging** — gate violations reaching production, before and after.
+Time spent waiting at each gate — every decision is timestamped with its verdict, so a gate that's become a queue is visible rather than folklore. And whether the thing the gate exists to prevent still reaches production.
 
 ---
 
-*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
+*The practices here follow the AI-native SDLC described in Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) (Louis Claxton, August 2026) — the canonical source, and worth reading in full. The wording and all examples in this file are original. Unofficial; not affiliated with or endorsed by Anthropic.*

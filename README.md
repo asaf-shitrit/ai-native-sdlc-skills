@@ -1,6 +1,6 @@
 # AI-Native SDLC skills
 
-> **Unofficial.** This repository repackages Anthropic's **[The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook)** (Louis Claxton, August 2026) as [Claude Code skills](https://code.claude.com/docs/en/skills), so the guidance loads at the moment it applies. The ideas, structure and examples are Anthropic's, not mine. See [NOTICE](NOTICE.md).
+> **Unofficial.** An independent implementation of the approach described in Anthropic's **[The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook)** (Louis Claxton, August 2026), packaged as [Claude Code skills](https://code.claude.com/docs/en/skills) so the guidance loads at the moment it applies. The ideas are Anthropic's; the prose and every example here are original. Not affiliated with or endorsed by Anthropic — see [NOTICE](NOTICE.md), and read the source article, which is more complete than this.
 
 The playbook's premise, in one line: **code is no longer the bottleneck — the human-speed steps to the left and right of it are.** Plan, review, test and deploy become the constraint once an agent writes most of the diff, and controls designed around a person reading every line stop matching reality. The answer isn't less process. It's the same control objectives with new enforcement.
 
@@ -37,7 +37,7 @@ Every stage ends by committing something the next stage reads, so the chain of c
 | `sdlc-pr-review` | `REVIEW.md` passes, the Important-vs-nit line, the fix loop, findings feeding back into `CLAUDE.md` |
 | `sdlc-close-loop` | Deterministic detection, σ-tiered response, headless runs, rehearsed rollback, per-environment autonomy |
 
-Each skill carries the playbook's working templates — `intent.md`, `plan.md`, `CLAUDE.md`, `SKILL.md`, `REVIEW.md`, `settings.json` with a gate script, `bands.yaml`, an evals workflow — plus the leading and lagging indicators that say whether adopting it worked.
+Each skill carries a worked example written for this repo — an intent and the plan that implements it, a `CLAUDE.md`, a policy skill, a review policy, a hook and its gate script, a tiered-response config, an evals workflow — plus the signal worth watching to tell whether adopting it helped.
 
 ## Install
 
@@ -78,4 +78,4 @@ Written for solo developers and small teams. The enterprise-only material from t
 
 ## Credit and rights
 
-All substance belongs to Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton. This repo is packaging, maintained by [@asaf-shitrit](https://github.com/asaf-shitrit), with no ownership claimed over the underlying material and no affiliation with Anthropic. Full statement in [NOTICE](NOTICE.md).
+The method comes from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton, which is the canonical source and covers considerably more than this does — including the enterprise material left out here. The skills in this repo are an independent implementation of that method: original prose, original examples, no ownership claimed over the underlying ideas, no affiliation with Anthropic. Full statement in [NOTICE](NOTICE.md).
