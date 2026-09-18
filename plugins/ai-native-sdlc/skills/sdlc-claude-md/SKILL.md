@@ -100,3 +100,7 @@ It makes the agent *likely* to apply the policy while the code is written. Nothi
 
 - **Leading** — how often the agent repeats a mistake `CLAUDE.md` should have caught; time from a policy change being approved to the updated skill merging.
 - **Lagging** — time to first merged PR for a new team member; PR review findings citing a policy, which should fall toward zero once the skill applies it at authoring time. If they do not fall, either the skill is not triggering or its text has drifted from the real policy.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

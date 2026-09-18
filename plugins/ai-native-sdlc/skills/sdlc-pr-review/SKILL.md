@@ -68,3 +68,7 @@ Once a month: rate the findings so the reviewer improves, cap nit volume in `REV
 
 - **Leading** — time to first review (should fall to minutes), and the share of review comments resolved without a human touching the branch.
 - **Lagging** — defects and vulnerabilities caught before merge, set against those escaping to production.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

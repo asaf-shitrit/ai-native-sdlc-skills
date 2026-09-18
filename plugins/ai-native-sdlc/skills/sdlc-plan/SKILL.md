@@ -70,3 +70,7 @@ Plan mode enforces design-before-code by construction: no file can be edited unt
 
 - **Leading** — share of changes that merge from the first implementation pass; time from plan approval to merged PR.
 - **Lagging** — rework cycles per change (PR metadata), and how often the merged diff still matches the committed `plan.md`.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

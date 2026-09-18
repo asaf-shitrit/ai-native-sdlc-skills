@@ -1,10 +1,20 @@
 {
   "name": "ai-native-sdlc",
   "displayName": "AI-Native SDLC",
-  "description": "Eleven skills for running an AI-native software development lifecycle: the committed-artifact chain from intent.md through spec, plan, self-verifying build, agentic review, and a closed maintenance loop.",
+  "description": "Unofficial Claude Code skills adapted from Anthropic's The AI-Native SDLC playbook: the committed-artifact chain from intent.md through spec, plan, self-verifying build, agentic review, and a closed maintenance loop.",
   "version": "1.0.0",
-  "license": "MIT",
-  "author": { "name": "Asaf Shitrit" },
+  "author": {
+    "name": "asaf-shitrit (packaging); source material by Anthropic"
+  },
   "repository": "https://github.com/asaf-shitrit/ai-native-sdlc-skills",
-  "keywords": ["sdlc", "workflow", "planning", "code-review", "evals", "hooks", "agentic"]
+  "keywords": [
+    "sdlc",
+    "workflow",
+    "planning",
+    "code-review",
+    "evals",
+    "hooks",
+    "agentic"
+  ],
+  "homepage": "https://claude.com/blog/the-ai-native-sdlc-playbook"
 }

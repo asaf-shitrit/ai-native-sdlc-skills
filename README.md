@@ -1,8 +1,10 @@
 # AI-Native SDLC skills
 
-Eleven [Claude Code skills](https://code.claude.com/docs/en/skills) that turn the AI-native software development lifecycle into something an agent actually follows: a chain of committed artifacts, from a raw idea through to production monitoring that feeds the next idea back in.
+> **Unofficial.** This repository repackages Anthropic's **[The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook)** (Louis Claxton, August 2026) as [Claude Code skills](https://code.claude.com/docs/en/skills), so the guidance loads at the moment it applies. The ideas, structure and examples are Anthropic's, not mine. See [NOTICE](NOTICE.md).
 
-The premise, in one line: **code is no longer the bottleneck — the human-speed steps to the left and right of it are.** Plan, review, test and deploy become the constraint once an agent writes most of the diff, and controls designed around a person reading every line stop matching reality. The answer isn't less process. It's the same control objectives with new enforcement.
+The playbook's premise, in one line: **code is no longer the bottleneck — the human-speed steps to the left and right of it are.** Plan, review, test and deploy become the constraint once an agent writes most of the diff, and controls designed around a person reading every line stop matching reality. The answer isn't less process. It's the same control objectives with new enforcement.
+
+Eleven skills carry that into a session.
 
 ## The artifact chain
 
@@ -17,7 +19,7 @@ idea / ticket / alert
    ↺  breach → new intent.md
 ```
 
-Every stage ends by committing something the next stage reads, so the chain of commits *is* the audit trail: who asked for what, the agent produced, who approved it. Humans stay accountable for every judgment call — what changes is which artifact they read.
+Every stage ends by committing something the next stage reads, so the chain of commits *is* the audit trail: who asked for what, what the agent produced, who approved it. Humans stay accountable for every judgment call — what changes is which artifact they read.
 
 ## The skills
 
@@ -35,7 +37,7 @@ Every stage ends by committing something the next stage reads, so the chain of c
 | `sdlc-pr-review` | `REVIEW.md` passes, the Important-vs-nit line, the fix loop, findings feeding back into `CLAUDE.md` |
 | `sdlc-close-loop` | Deterministic detection, σ-tiered response, headless runs, rehearsed rollback, per-environment autonomy |
 
-Each skill carries the working templates — `intent.md`, `plan.md`, `CLAUDE.md`, `SKILL.md`, `REVIEW.md`, `settings.json` with a gate script, `bands.yaml`, an evals workflow — plus the leading and lagging indicators that say whether adopting it worked.
+Each skill carries the playbook's working templates — `intent.md`, `plan.md`, `CLAUDE.md`, `SKILL.md`, `REVIEW.md`, `settings.json` with a gate script, `bands.yaml`, an evals workflow — plus the leading and lagging indicators that say whether adopting it worked.
 
 ## Install
 
@@ -74,12 +76,6 @@ Then work outward along the arrows in `ai-native-sdlc`.
 
 Written for solo developers and small teams. The enterprise-only material from the source playbook — MDM-deployed managed settings, sandbox admin keys, seat and spend administration, hosted scanning, chat-tool on-call — is deliberately left out, with links to the reference docs where the full detail matters.
 
-## Credit
+## Credit and rights
 
-Distilled from Anthropic's [**The AI-Native SDLC playbook**](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source and worth reading in full. The ideas, structure and example templates are theirs; this repo packages them as skills an agent loads at the moment they apply.
-
-Not affiliated with or endorsed by Anthropic.
-
-## License
-
-MIT — see [LICENSE](LICENSE). Applies to the packaging in this repo.
+All substance belongs to Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton. This repo is packaging, maintained by [@asaf-shitrit](https://github.com/asaf-shitrit), with no ownership claimed over the underlying material and no affiliation with Anthropic. Full statement in [NOTICE](NOTICE.md).

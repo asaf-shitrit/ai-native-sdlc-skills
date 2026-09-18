@@ -72,3 +72,7 @@ The committed file *is* the evidence: author, timestamp, full revision history. 
 
 - **Leading** — time from first conversation to a committed `intent.md`, read off git history. Expect weeks of elicitation to collapse to hours.
 - **Lagging** — survival rate: the share of intents accepted into design rather than closed. Plus the number of edits to `intent.md` made *after* the first `spec.md` commit, which measures how much was missed the first time.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

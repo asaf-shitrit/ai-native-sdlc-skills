@@ -64,3 +64,7 @@ More sessions means more output, so the controls must come from **configuration 
 
 - **Leading** — concurrent sessions per person *while review quality holds*, and the share of the day spent steering rather than waiting.
 - **Lagging** — changes merged per person per week, read **alongside** the rework rate. Either number alone is misleading.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

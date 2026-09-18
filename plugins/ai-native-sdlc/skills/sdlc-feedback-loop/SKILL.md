@@ -70,3 +70,7 @@ They are different things and both are useful:
 
 - **Leading** — first-pass CI success rate for agent-written changes.
 - **Lagging** — review time per PR (should fall once tests catch what reviewers used to catch), and change failure rate from the incident tracker.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

@@ -58,3 +58,7 @@ The spec, the prompt that produced it, and the versions of the skills in force a
 
 - **Leading** — elapsed time between the `intent.md` commit and the `spec.md` commit for the same change (two git timestamps), against the old requirements-plus-design cycle.
 - **Lagging** — requirements rework after build starts: count `spec.md` commits dated after the first `plan.md` commit for the same change. `git log` gives this directly.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

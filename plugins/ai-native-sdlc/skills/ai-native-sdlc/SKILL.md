@@ -5,8 +5,6 @@ description: Router and shared model for the AI-native software development life
 
 # The AI-native SDLC
 
-Distilled from Anthropic's *The AI-Native SDLC playbook* (claude.com/blog/the-ai-native-sdlc-playbook, Aug 2026).
-
 ## The one idea
 
 Code is no longer the bottleneck. The steps to the **left and right** of build — plan, review, test, deploy — still run at human speed, so they become the constraint. Traditional controls (read every line, route exceptions through a weekly meeting) stop matching reality once an agent writes most of the diff.
@@ -77,3 +75,7 @@ Every play has both. Prefer metrics the toolchain already emits (git timestamps,
 - **Lagging** — rework and escape rate. Spec commits dated after the first plan commit; merged diffs that no longer match plan.md; defects caught before merge vs. escaping to production; repeat incidents of the same class.
 
 A leading indicator that improves while the lagging one worsens means the process is going faster at producing rework. Read them as a pair.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

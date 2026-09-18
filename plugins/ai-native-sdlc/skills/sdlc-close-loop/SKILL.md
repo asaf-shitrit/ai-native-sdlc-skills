@@ -89,3 +89,7 @@ Tier boundaries are enforced from version-controlled config, with permissions de
 
 - **Leading** — time from band breach to an `intent.md` in the triage queue, against the old time from incident to post-mortem action.
 - **Lagging** — share of findings that become merged fixes, and repeat incidents of the same class, which should fall as fixes add cases to the eval suite.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*

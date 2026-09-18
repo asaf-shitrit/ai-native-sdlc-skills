@@ -90,3 +90,7 @@ Related deterministic controls worth pairing with hooks: permission allow/deny r
 
 - **Leading** — time spent waiting at each approval gate. Every hook decision carries a timestamp and an allow/block verdict, so the wait is visible per gate.
 - **Lagging** — gate violations reaching production, before and after.
+
+---
+
+*Distilled from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton (August 2026), which is the canonical source. This is an unofficial repackaging into skill form; not affiliated with or endorsed by Anthropic.*
