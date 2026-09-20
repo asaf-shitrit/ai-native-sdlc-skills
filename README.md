@@ -79,3 +79,7 @@ Written for solo developers and small teams. The enterprise-only material from t
 ## Credit and rights
 
 The method comes from Anthropic's [The AI-Native SDLC playbook](https://claude.com/blog/the-ai-native-sdlc-playbook) by Louis Claxton, which is the canonical source and covers considerably more than this does — including the enterprise material left out here. The skills in this repo are an independent implementation of that method: original prose, original examples, no ownership claimed over the underlying ideas, no affiliation with Anthropic. Full statement in [NOTICE](NOTICE.md).
+
+## License
+
+[MIT](LICENSE), covering this repo's own prose, examples and manifests. It does not extend to the method itself, which is Anthropic's — see [NOTICE](NOTICE.md).

@@ -16,5 +16,6 @@
     "hooks",
     "agentic"
   ],
-  "homepage": "https://claude.com/blog/the-ai-native-sdlc-playbook"
+  "homepage": "https://claude.com/blog/the-ai-native-sdlc-playbook",
+  "license": "MIT"
 }

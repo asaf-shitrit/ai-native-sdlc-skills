@@ -20,7 +20,8 @@
         "evals",
         "hooks",
         "agentic"
-      ]
+      ],
+      "license": "MIT"
     }
   ]
 }

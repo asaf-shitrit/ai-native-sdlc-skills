@@ -6,6 +6,15 @@ This repository is an unofficial, independent implementation of that approach as
 
 **On authorship:** an earlier version of these files reproduced the article's example templates and section structure closely. They have since been rewritten — every template, configuration sample, code snippet and running example in this repo is original, as is the prose and the organization of each skill. What is shared with the source is the method itself: the artifact chain, the ordering of the practices, and the vocabulary for them. Methods are not owned; the article's expression of them is, and none of it is reproduced here.
 
-No claim is made over the underlying ideas, which are Anthropic's.
+## What the license covers
+
+The [MIT license](LICENSE) on this repository applies to its own contents: the
+skill prose, the worked examples, and the plugin manifests, all of which were
+written for this repo.
+
+It does not, and cannot, extend to the underlying method — the artifact chain
+and the practices around it — which comes from the source article and belongs
+to Anthropic. Nothing here grants anyone rights to that article or to
+Anthropic's material, and no claim is made over it.
 
 If you are the rights holder and would like anything here changed or removed, open an issue and it will be actioned.
